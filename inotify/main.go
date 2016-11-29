@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"golang.org/x/exp/inotify"
+	"gopkg.in/fsnotify.v1"
 	"log"
 	"os"
 )
@@ -41,13 +41,14 @@ func init() {
 func main() {
 	paths := flag.Args()
 
-	watcher, err := inotify.NewWatcher()
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal("Unable to create a watcher", err)
 	}
+	defer watcher.Close()
 
 	for _, path := range paths {
-		err = watcher.Watch(path)
+		err = watcher.Add(path)
 		if err != nil {
 			log.Fatalf("Unable to watch '%s': %s", path, err)
 		}
@@ -56,14 +57,14 @@ func main() {
 	log.Println("Starting monitoring")
 	for {
 		select {
-		case ev := <-watcher.Event:
+		case ev := <-watcher.Events:
 			log.Printf("Recieved an Event: %s", ev.String())
 			/*
 				log.Printf("Event name: %s", ev.Name)
 				log.Printf("Event Mask: %d", ev.Mask)
 				log.Printf("Event Cookie: %d", ev.Cookie)
 			*/
-		case err := <-watcher.Error:
+		case err := <-watcher.Errors:
 			log.Printf("Recieved an error: %s", err)
 		}
 	}

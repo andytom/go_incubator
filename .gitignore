@@ -2,3 +2,4 @@ inotify/inotify
 is_it_down/is_it_down
 munin_client/munin_client
 tldr/tldr
+*/vendor

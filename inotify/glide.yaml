@@ -1,0 +1,4 @@
+package: github.com/andytom/incubator/inotify
+import:
+- package: gopkg.in/fsnotify.v1
+  version: ~1.4.2
