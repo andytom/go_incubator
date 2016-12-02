@@ -9,11 +9,11 @@ import (
 // -- Helper Functions --
 
 // Helper function for testing renderPage.
-func DoRenderTest(input, expected string, t *testing.T) {
+func DoRenderTest(t *testing.T, input, expected string) {
 
-	inputReadCloser := ioutil.NopCloser(strings.NewReader(input))
+	p := Page{"dummy", ioutil.NopCloser(strings.NewReader(input))}
 
-	output := renderPage(inputReadCloser)
+	output := p.Render()
 
 	if output != expected {
 		t.Error("Expected ", expected, ", got ", output)
@@ -26,35 +26,35 @@ func TestRenderPageTitle(t *testing.T) {
 	input := "# Title"
 	expected := "\033[1mTitle\033[0m\n"
 
-	DoRenderTest(input, expected, t)
+	DoRenderTest(t, input, expected)
 }
 
 func TestRenderPageDescription(t *testing.T) {
 	input := "> Description"
 	expected := "Description\n"
 
-	DoRenderTest(input, expected, t)
+	DoRenderTest(t, input, expected)
 }
 
 func TestRenderPageExampleHeader(t *testing.T) {
 	input := "- Example Header"
 	expected := "-\033[32;1m Example Header\033[0m\n"
 
-	DoRenderTest(input, expected, t)
+	DoRenderTest(t, input, expected)
 }
 
 func TestRenderPageExampleCode(t *testing.T) {
 	input := "` Example Code `"
 	expected := "  \033[31;1m Example Code \033[0m\n"
 
-	DoRenderTest(input, expected, t)
+	DoRenderTest(t, input, expected)
 }
 
 func TestRenderPageExampleCodePlaceHolder(t *testing.T) {
 	input := "` Example {{ placeholder }} Code `"
 	expected := "  \033[31;1m Example \033[0m placeholder \033[31;1m Code \033[0m\n"
 
-	DoRenderTest(input, expected, t)
+	DoRenderTest(t, input, expected)
 }
 
 // -- Tests for queryGithub --
@@ -63,21 +63,21 @@ func TestRenderPageExampleCodePlaceHolder(t *testing.T) {
 
 // -- Tests for getPage --
 func TestGetPageGood(t *testing.T) {
-	cmd := "grep"
+	page := Page{cmd: "grep"}
 
-	page, err := getPage(cmd)
+	err := page.Fetch()
 
 	if err != nil {
-		t.Error("Got Error for know good page")
+		t.Error("Got Error for know good page", err)
 	}
 
 	page.Close()
 }
 
 func TestGetPageBad(t *testing.T) {
-	cmd := "not_a_real_command"
+	page := Page{cmd: "not_a_real_command"}
 
-	_, err := getPage(cmd)
+	err := page.Fetch()
 
 	if err == nil {
 		t.Error("Didn't get an Error for a bad page")

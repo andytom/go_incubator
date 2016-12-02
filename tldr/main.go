@@ -14,8 +14,10 @@ import (
 // -- Constants --
 
 const (
-	urlBase = "https://raw.githubusercontent.com/tldr-pages/tldr/master/pages/"
+	// Template URL for TLDR pages
+	urlBase = "https://raw.githubusercontent.com/tldr-pages/tldr/master/pages/%s/%s.md"
 
+	// ASCII codes for colourful output
 	escapePrefix = "\033["
 	escapeSuffix = "m"
 	bright       = ";1"
@@ -41,7 +43,7 @@ func getPlatform() string {
 
 func queryGithub(cmd, platform string) io.ReadCloser {
 
-	url := urlBase + "/" + platform + "/" + cmd + ".md"
+	url := fmt.Sprintf(urlBase, platform, cmd)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -55,27 +57,39 @@ func queryGithub(cmd, platform string) io.ReadCloser {
 	return nil
 }
 
-func getPage(cmd string) (io.ReadCloser, error) {
+// -- Page --
+
+type Page struct {
+	cmd     string
+	content io.ReadCloser
+}
+
+func (page *Page) Close() {
+	page.content.Close()
+}
+
+func (page *Page) Fetch() error {
 
 	// First try to get the platform page
-	platform := getPlatform()
-	page := queryGithub(cmd, platform)
-	if page != nil {
-		return page, nil
+	body := queryGithub(page.cmd, getPlatform())
+	if body != nil {
+		page.content = body
+		return nil
 	}
 
 	// If that fails try to get the common page
-	page = queryGithub(cmd, "common")
-	if page != nil {
-		return page, nil
+	body = queryGithub(page.cmd, "common")
+	if body != nil {
+		page.content = body
+		return nil
 	}
 
-	// If that doesn't work return an error
-	return nil, errors.New("Unable to find page for " + cmd)
+	// If we got something return it, if not bail
+	return errors.New("Unable to find page for " + page.cmd)
 }
 
-func renderPage(page io.ReadCloser) string {
-	scanner := bufio.NewScanner(page)
+func (page *Page) Render() string {
+	scanner := bufio.NewScanner(page.content)
 
 	rendered := ""
 
@@ -122,17 +136,16 @@ func main() {
 	cmd := os.Args[1]
 
 	// TODO - Cache results (and add flag to clear/update cache)
-	page, err := getPage(cmd)
+	page := Page{cmd: cmd}
+	err := page.Fetch()
 
 	// TODO - Better error handling (everywhere not just here)
 	if err != nil {
 		fmt.Println("Oh shit something bad happened!")
-		//fmt.Printf("%s\n", err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	defer page.Close()
-
-	rendered := renderPage(page)
-	fmt.Println(rendered)
+	fmt.Println(page.Render())
+	page.Close()
 }
